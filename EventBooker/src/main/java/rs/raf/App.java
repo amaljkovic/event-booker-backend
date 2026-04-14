@@ -43,8 +43,37 @@ public class App
         });
 
 
+        before("/api/*", (req, res) -> {
+            String p = req.pathInfo();
+            String m = req.requestMethod();
+
+            // Public endpoints (no auth)
+            if (
+                    p.equals("/api/login") || p.equals("/api/logout") || p.equals("/api/me") || ((m.equals("GET") && (p.startsWith("/api/events") || p.startsWith("/api/categories")) || p.startsWith("/api/events/reaction") || p.startsWith("/api/events/comments")))
+            ) {
+                return;
+            }
+
+
+
+            // Private endpoints (need session)
+            if (req.session(false) == null || req.session().attribute("id") == null) {
+                halt(401, "Not authenticated");
+            }
+
+            // For non-GET, also require active user
+            if (!m.equals("GET")) {
+                if (!new rs.raf.services.UserService().isActive(req, res)) {
+                    halt(403, "Inactive User");
+                }
+            }
+        });
+
+
         //users
         before("/api/users",(req,res)->{
+            String path = req.pathInfo();
+
             if(req.session().attribute("id")==null)
                 halt(401,"Not authenticated");
             boolean role = req.session().attribute("role");
@@ -61,57 +90,57 @@ public class App
             }
         });
         //categories
-        before("/api/categories",(req,res)->{
-            if(req.requestMethod().equals("GET"))
-                return;
-
-                //neulogovani useri smeju get
-            if(req.session().attribute("id")==null)
-                halt(401,"Not authenticated");
-            if(!req.requestMethod().equals("GET")) {
-                if (!userService.isActive(req, res))
-                    halt(403, "Inactive User");
-            }
-        });
-        before("/api/categories/*",(req,res)->{
-            if(req.requestMethod().equals("GET"))
-                return;
-            if(req.session().attribute("id")==null)
-                halt(401,"Not authenticated");
-            if(!req.requestMethod().equals("GET")) {
-                if (!userService.isActive(req, res))
-                    halt(403, "Inactive User");
-            }
-        });
+//        before("/api/categories",(req,res)->{
+//            if(req.requestMethod().equals("GET"))
+//                return;
+//
+//                //neulogovani useri smeju get
+//            if(req.session().attribute("id")==null)
+//                halt(401,"Not authenticated");
+//            if(!req.requestMethod().equals("GET")) {
+//                if (!userService.isActive(req, res))
+//                    halt(403, "Inactive User");
+//            }
+//        });
+//        before("/api/categories/*",(req,res)->{
+//            if(req.requestMethod().equals("GET"))
+//                return;
+//            if(req.session().attribute("id")==null)
+//                halt(401,"Not authenticated");
+//            if(!req.requestMethod().equals("GET")) {
+//                if (!userService.isActive(req, res))
+//                    halt(403, "Inactive User");
+//            }
+//        });
         //events
-        before("/api/events",(req,res)->{
-            String path = req.pathInfo();
-
-            if (path.startsWith("/api/events/comments") || path.startsWith("/api/events/reaction/")) {
-                return;
-            }
-            if(req.session().attribute("id")==null && req.attribute("visitorId")==null )
-                halt(401,"Not authenticated");
-            if(!req.requestMethod().equals("GET")) {
-                if (!userService.isActive(req, res))
-                    halt(403, "Inactive User");
-            }
-        });
-        before("/api/events/*",(req,res)->{
-            String path = req.pathInfo();
-
-            if (path.startsWith("/api/events/comments") || path.startsWith("/api/events/reaction/") || path.startsWith("/api/me")) {
-                return;
-            }
-            if(!req.requestMethod().equals("GET")) {
-                if(req.session().attribute("id")==null)
-                    halt(401,"Not authenticated");
-                if(!req.requestMethod().equals("GET")) {
-                    if (!userService.isActive(req, res))
-                        halt(403, "Inactive User");
-                }
-            }
-        });
+//        before("/api/events",(req,res)->{
+//            String path = req.pathInfo();
+//
+//            if (path.startsWith("/api/events/comments") || path.startsWith("/api/events/reaction/") || path.startsWith("/api/me")) {
+//                return;
+//            }
+//            if(req.session().attribute("id")==null && req.attribute("visitorId")==null )
+//                halt(401,"Not authenticated");
+//            if(!req.requestMethod().equals("GET")) {
+//                if (!userService.isActive(req, res))
+//                    halt(403, "Inactive User");
+//            }
+//        });
+//        before("/api/events/*",(req,res)->{
+//            String path = req.pathInfo();
+//
+//            if (path.startsWith("/api/events/comments") || path.startsWith("/api/events/reaction/") || path.startsWith("/api/me")) {
+//                return;
+//            }
+//            if(!req.requestMethod().equals("GET")) {
+//                if(req.session().attribute("id")==null)
+//                    halt(401,"Not authenticated");
+//                if(!req.requestMethod().equals("GET")) {
+//                    if (!userService.isActive(req, res))
+//                        halt(403, "Inactive User");
+//                }
+//            }
+//        });
 
         path("/api", () -> {
             get("/me",userService::me);
@@ -132,6 +161,12 @@ public class App
                     return "Logged in successfully";
                 }
             });
+            post("/logout", (req, res) -> {
+                if (req.session(false) != null) req.session().invalidate();
+                res.status(204);
+                res.type("text/plain");
+                return "";
+            });
 
             path("/events", () -> {
                 get("", eventService::getEvents);
@@ -147,6 +182,7 @@ public class App
                 delete("/:id",eventService::deleteEvent);
                 post("/comments/reaction/:id",eventService::commentReaction);
                 post("/reaction/:id",eventService::eventReaction);
+                get("/similar/:id",eventService::similarEvents);
 
 
                 post("/comments/:id",eventService::addComment); //todo tests

@@ -1,9 +1,12 @@
 package rs.raf.entities;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Date;
 
 public class Comment {
     private int id;
+    @JsonProperty("author")
     private String comment_author;
     private String text;
     Date creation_date;

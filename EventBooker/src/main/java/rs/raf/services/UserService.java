@@ -11,6 +11,7 @@ import rs.raf.repositories.user.UserRepository;
 import rs.raf.repositories.user.UserRepositoryImpl;
 import spark.Request;
 import spark.Response;
+import spark.Session;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,15 +88,31 @@ public class UserService {
         userRepository.activateUser(id);
     }
 
-    public User me(Request req, Response res) throws JsonProcessingException {
-        Integer id = (req.session(false) != null) ? req.session().attribute("id") : null;
-        if (id == null) { res.status(401); return null; }
+    public Object me(Request req, Response res) {
+        Session s = req.session(false);
+        if (s == null) {
+            res.status(401);
+            res.type("text/plain");
+            return "";        // empty body instead of "null"
+        }
+
+        Integer id = s.attribute("id");
+        if (id == null) {
+            res.status(401);
+            res.type("text/plain");
+            return "";
+        }
 
         User u = userRepository.getUserById(id);
-        if (u == null || !u.isActive()) { res.status(401); return null; }
+        if (u == null || !u.isActive()) {
+            res.status(401);
+            res.type("text/plain");
+            return "";
+        }
 
         u.setPassword(null);
         res.status(200);
+        res.type("application/json");
         return u;
     }
 

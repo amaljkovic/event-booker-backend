@@ -14,6 +14,7 @@ import java.util.List;
 
 public class EventRepositoryImpl extends AbstractRepository implements EventRepository {
 
+
     public int countAllEvents(){
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -110,7 +111,7 @@ public class EventRepositoryImpl extends AbstractRepository implements EventRepo
     }
 
     @Override
-    public String eventReaction(ReactionDto r, Integer userId, String visitorId) {
+    public Event eventReaction(ReactionDto r, Integer userId, String visitorId) {
         Connection connection = null;
         PreparedStatement statement = null;
         PreparedStatement check = null;
@@ -122,29 +123,27 @@ public class EventRepositoryImpl extends AbstractRepository implements EventRepo
         try{
             connection = this.newConnection();
             if(userId != null){
-                check = connection.prepareStatement("select * from comment_reactions where user_id=? and event_id=?");
+                check = connection.prepareStatement("select * from event_reactions where user_id=? and event_id=?");
                 check.setInt(1, userId);
             }else{
-                check = connection.prepareStatement("select * from comment_reactions where  visitor_id=? and event_id=?");
+                check = connection.prepareStatement("select * from event_reactions where  visitor_id=? and event_id=?");
                 check.setString(1, visitorId);
             }
             check.setInt(2,r.getEvent_id());
 
             checkRes = check.executeQuery();
             if(checkRes.next()){  //-1
-                return "already thre";
+                return getEventById(r.getEvent_id(),null,null);
             }
             if(userId != null){
-                statement = connection.prepareStatement("insert  into comment_reactions (user_id,event_id,reaction) values(?,?,?)");
+                statement = connection.prepareStatement("insert  into event_reactions (user_id,event_id) values(?,?)");
                 statement.setInt(1, userId);
                 statement.setInt(2, r.getEvent_id());
-                statement.setInt(3, r.getReaction());
             }
             else{
-                statement = connection.prepareStatement("insert  into comment_reactions (visitor_id,event_id,reaction) values(?,?,?)");
+                statement = connection.prepareStatement("insert  into event_reactions (visitor_id,event_id) values(?,?)");
                 statement.setString(1, visitorId);
                 statement.setInt(2, r.getEvent_id());
-                statement.setInt(3, r.getReaction());
             }
             statement.executeUpdate();
             update = connection.prepareStatement("update events set reaction=events.reaction+? where id=?");
@@ -153,7 +152,7 @@ public class EventRepositoryImpl extends AbstractRepository implements EventRepo
 
             update.executeUpdate();
 
-            return "Like count changed";
+            return getEventById(r.getEvent_id(),null,null);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }finally {

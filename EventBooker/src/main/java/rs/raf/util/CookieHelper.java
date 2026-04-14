@@ -17,7 +17,14 @@ public class CookieHelper {
         if (cookie == null || !isValid(cookie)) {
             String raw = UUID.randomUUID().toString();
             String signed = raw + "." + sign(raw);
-            res.cookie("/", COOKIE_NAME, signed, 60 * 60 * 24 * 365, true, true);
+
+            boolean secure = "https".equalsIgnoreCase(req.scheme()); // Secure only on HTTPS
+            // Spark's cookie() has no SameSite, so set header manually:
+            String attrs = "Path=/; Max-Age=" + (60*60*24*365) + "; HttpOnly; SameSite=Lax";
+            if (secure) attrs += "; Secure";
+            res.raw().addHeader("Set-Cookie", COOKIE_NAME + "=" + signed + "; " + attrs);
+
+            //res.cookie("/", COOKIE_NAME, signed, 60 * 60 * 24 * 365, true, true);
             return raw;
         } else {
             return cookie.split("\\.")[0];

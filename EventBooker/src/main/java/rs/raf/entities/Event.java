@@ -1,5 +1,7 @@
 package rs.raf.entities;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Date;
 import java.util.List;
 
@@ -11,6 +13,7 @@ public class Event {
     private Date creation_date;
     private Date event_date;
     private String location;
+    @JsonProperty("view_count")
     private int views;
     private User author;
     private List<Tag> tags;
@@ -18,6 +21,7 @@ public class Event {
     private int max_capacity;
     private List<Comment> comments;
     private int rsvp_count;
+    @JsonProperty("reaction")
     private int reactions;
 
     public int getReactions() {

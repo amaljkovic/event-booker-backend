@@ -6,12 +6,14 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import rs.raf.dto.*;
 import rs.raf.entities.Event;
+import rs.raf.entities.Tag;
 import rs.raf.repositories.events.EventRepository;
 import rs.raf.repositories.events.EventRepositoryImpl;
 import spark.Request;
 import spark.Response;
 import spark.Session;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class EventService {
@@ -44,18 +46,25 @@ public class EventService {
         }
 
         String visitorId = req.attribute("visitorId");
+
+
         return eventRepository.getEventById(id, null, visitorId);
     }
 
     public Event rsvp(Request req, Response res) throws JsonProcessingException {
         int id = Integer.parseInt(req.params(":id"));
         Integer userId = null;
+        Event event = null;
         if (req.session(false) != null) {
             userId = req.session().attribute("id");
-            return eventRepository.rsvpToEvent(id,userId,null);
+            event = eventRepository.rsvpToEvent(id,userId,null);
+            res.redirect("/api/events/"+id);
+            return event;
         }
         String visitorId = req.attribute("visitorId");
-        return eventRepository.rsvpToEvent(id,null,visitorId);
+        event = eventRepository.rsvpToEvent(id,null,visitorId);
+        res.redirect("/api/events/"+id);
+        return event;
     }
 
     public EventDto addEvent(Request req, Response res) throws JsonProcessingException {
@@ -165,7 +174,33 @@ public class EventService {
 
     }
 
+    public List<Event> similarEvents(Request req, Response res) throws JsonProcessingException {
+        int id = Integer.parseInt(req.params(":id"));
 
+        Event event = eventRepository.getEventById(id,null,null);
+        List<Tag> tags = event.getTags();
+        System.out.println(tags);
+        List<Event> similiarEvents = new ArrayList<Event>();
+
+        for (Tag tag : tags) {
+            System.out.println("entered tag: " + tag);
+            List<Event> events = eventRepository.getEventsByTag(tag.getId(),3,0);
+            System.out.println(events);
+            for (Event e : events) {
+                System.out.println("usao");
+                if(similiarEvents.size() == 3) {
+                    break;
+                }
+                if(!similiarEvents.contains(e) && e.getId()!=event.getId()) {
+                    similiarEvents.add(e);
+                    System.out.println(1);
+                }
+            }
+
+        }
+        return similiarEvents;
+
+    }
 
     public Event addTag(Request req, Response res) throws JsonProcessingException {
         int id = Integer.parseInt(req.params(":id"));
@@ -211,11 +246,12 @@ public class EventService {
         return new Page<Event>(items,page,size,count);
     }
 
+
     private int qInt(Request req, String name, int def) {
         try { return Integer.parseInt(req.queryParams(name)); } catch (Exception e) { return def; }
     }
 
-    public Object eventReaction(Request request, Response response) throws JsonProcessingException {
+    public Event eventReaction(Request request, Response response) throws JsonProcessingException {
         int id = Integer.parseInt(request.params(":id"));
         ReactionDto r =mapper.readValue(request.body(), ReactionDto.class);
         r.setEvent_id(id);

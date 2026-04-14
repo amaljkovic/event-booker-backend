@@ -28,7 +28,7 @@ public interface EventRepository {
     int countEventsByTag(int tagId);
     int countEventsByKeyword(String keyword);
 
-    Object eventReaction(ReactionDto r, Integer userId, String visitorId);
+    Event eventReaction(ReactionDto r, Integer userId, String visitorId);
 
     List<Event> mostReactions(int limit);
 }
